@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="no.dnb.ping_identity">
+
+    <application>
+        <service android:name=".PingIdentitySdkMessagingService" />
+    </application>
+</manifest>
