@@ -1,8 +1,6 @@
 package no.dnb.ping_identity
 
 import android.app.Application
-import android.os.Handler
-import android.os.Looper
 import androidx.annotation.NonNull;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -26,11 +24,9 @@ public class PingIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
     /// when the Flutter Engine is detached from the Activity
     private lateinit var channel: MethodChannel
     private var application: Application? = null
-    private var handler: Handler? = null
 
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        handler = Handler(Looper.getMainLooper())
         channel = MethodChannel(flutterPluginBinding.flutterEngine.dartExecutor, "no.dnb.ping_identity")
         channel.setMethodCallHandler(this);
     }
@@ -180,7 +176,6 @@ public class PingIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
-        handler = null
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
