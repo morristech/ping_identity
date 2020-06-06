@@ -1,8 +1,7 @@
 package no.dnb.ping_identity
 
 import android.app.Application
-import androidx.annotation.NonNull;
-
+import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -10,25 +9,24 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import pingidsdkclient.PIDUserSelectionObject
-import pingidsdkclient.PingID
 import java.util.HashMap
 import kotlin.Exception
+import pingidsdkclient.PIDUserSelectionObject
+import pingidsdkclient.PingID
 
 /** PingIdentityPlugin */
 // TODO: Documentation
 public class PingIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
-    /// The MethodChannel that will the communication between Flutter and native Android
-    ///
-    /// This local reference serves to register the plugin with the Flutter Engine and unregister it
-    /// when the Flutter Engine is detached from the Activity
+    // / The MethodChannel that will the communication between Flutter and native Android
+    // /
+    // / This local reference serves to register the plugin with the Flutter Engine and unregister it
+    // / when the Flutter Engine is detached from the Activity
     private lateinit var channel: MethodChannel
     private var application: Application? = null
 
-
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.flutterEngine.dartExecutor, "no.dnb.ping_identity")
-        channel.setMethodCallHandler(this);
+        channel.setMethodCallHandler(this)
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -42,11 +40,64 @@ public class PingIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
             "isDeviceTrusted" -> isDeviceTrusted(result)
             "isPushDisabled" -> isPushDisabled(result)
             "isGooglePlayServicesAvailable" -> isGooglePlayServicesAvailable(result)
+            "getRestrictiveOneTimePasscode" -> getRestrictiveOneTimePasscode(result)
+            "validateAuthenticationToken" -> validateAuthenticationToken(call, result)
+            "setRootDetection" -> setRootDetection(call, result)
+            "setServerPayload" -> setServerPayload(call, result)
+            "updateExistingPayloadWithUserSelection" -> updateExistingPayloadWithUserSelection(call, result)
             else -> result.notImplemented()
         }
     }
 
-    private fun isPushDisabled(result: Result) {
+    private fun updateExistingPayloadWithUserSelection(@NonNull call: MethodCall, @NonNull result: Result) {
+        try {
+            val userAnswer = call.argument<String>("userAnswer")
+            val ignoreInterval = call.argument<String>("ignoreInterval")
+
+            result.success(PingID.getInstance().updateExistingPayloadWithUserSelection(userAnswer, ignoreInterval))
+        } catch (e: Exception) {
+            reportException(result, e)
+        }
+    }
+
+    private fun setServerPayload(@NonNull call: MethodCall, @NonNull result: Result) {
+        try {
+            PingID.getInstance().setServerPayload(call.arguments as String)
+        } catch (e: Exception) {
+            reportException(result, e)
+        }
+    }
+
+    private fun setRootDetection(@NonNull call: MethodCall, @NonNull result: Result) {
+        try {
+            val toActivate = call.argument<Boolean>("toActivate")!!
+            val deviceVerificationApiKey = call.argument<String>("deviceVerificationApiKey")!!
+            val dataCenter = dataCenterFromString(call.argument<String>("dataCenter")!!)
+            PingID.getInstance().setRootDetection(toActivate, dataCenter, deviceVerificationApiKey)
+        } catch (e: Exception) {
+            reportException(result, e)
+        }
+    }
+
+    private fun validateAuthenticationToken(@NonNull call: MethodCall, @NonNull result: Result) {
+        try {
+            result.success(PingID.getInstance().validateAuthenticationToken(call.arguments as String));
+        } catch (e: Exception) {
+            reportException(result, e)
+        }
+    }
+
+    private fun getRestrictiveOneTimePasscode(@NonNull result: Result) {
+        try {
+            PingID.getInstance().getRestrictiveOneTimePasscode {
+                result.success(mapOf("passcode" to it.first, "status" to it.second.name))
+            }
+        } catch (e: Exception) {
+            reportException(result, e)
+        }
+    }
+
+    private fun isPushDisabled(@NonNull result: Result) {
         try {
             result.success(PingID.getInstance().isPushDisabled)
         } catch (e: Exception) {
@@ -54,7 +105,7 @@ public class PingIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
         }
     }
 
-    private fun isGooglePlayServicesAvailable(result: Result) {
+    private fun isGooglePlayServicesAvailable(@NonNull result: Result) {
         try {
             result.success(PingID.getInstance().isGooglePlayServicesAvailable)
         } catch (e: Exception) {
@@ -62,7 +113,7 @@ public class PingIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
         }
     }
 
-    private fun isDeviceTrusted(result: Result) {
+    private fun isDeviceTrusted(@NonNull result: Result) {
         try {
             result.success(PingID.getInstance().isDeviceTrusted)
         } catch (e: Exception) {
@@ -70,7 +121,7 @@ public class PingIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
         }
     }
 
-    private fun sendLogs(result: Result) {
+    private fun sendLogs(@NonNull result: Result) {
         try {
             PingID.getInstance().sendLogs()
         } catch (e: Exception) {
@@ -81,16 +132,21 @@ public class PingIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
 
     private fun postIDPAuthenticationStepWithDataCenter(@NonNull call: MethodCall, @NonNull result: Result) {
         try {
-            val dataCenter = PingID.PIDDataCenterType.PIDDataCenterTypeDefault
-            when (call.arguments as String) {
-                "northAmerica" -> PingID.PIDDataCenterType.PIDDataCenterTypeNA
-                "australia" -> PingID.PIDDataCenterType.PIDDataCenterTypeAU
-                "europe" -> PingID.PIDDataCenterType.PIDDataCenterTypeEU
-            }
+            val dataCenter = dataCenterFromString(call.arguments as String)
             PingID.getInstance().postIDPAuthenticationStepWithDataCenter(dataCenter)
         } catch (e: Exception) {
             reportException(result, e)
         }
+    }
+
+    private fun dataCenterFromString(input: String): PingID.PIDDataCenterType {
+        var result = PingID.PIDDataCenterType.PIDDataCenterTypeDefault
+        when (input) {
+            "northAmerica" -> result = PingID.PIDDataCenterType.PIDDataCenterTypeNA
+            "australia" -> result = PingID.PIDDataCenterType.PIDDataCenterTypeAU
+            "europe" -> result = PingID.PIDDataCenterType.PIDDataCenterTypeEU
+        }
+        return result
     }
 
     private fun generatePayload(@NonNull result: Result) {
@@ -159,7 +215,6 @@ public class PingIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
                     senderId,
                     mfaType
             )
-
             val map = mapOf(
                     "isGooglePlayServicesAvailable" to PingID.getInstance().isGooglePlayServicesAvailable,
                     "isPushDisabled" to PingID.getInstance().isPushDisabled

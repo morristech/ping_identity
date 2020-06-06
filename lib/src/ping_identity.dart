@@ -2,20 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:ping_identity/ping_identity.dart';
-
-import 'models/ping_identity_action_type.dart';
-import 'models/ping_identity_data_center.dart';
-import 'models/user_selection.dart';
-import 'models/responses/pairing_options_required_response.dart';
-import 'models/responses/pairing_options_required_with_passcode_response.dart';
-import 'models/responses/pairing_completed_response.dart';
-import 'models/responses/logs_sent_to_server_response.dart';
-import 'models/responses/ignore_device_completed_response.dart';
-import 'models/responses/error_response.dart';
-import 'models/responses/authentication_token_status_response.dart';
-import 'models/responses/authentication_completed_response.dart';
-import 'models/ping_identity_config.dart';
+import 'package:ping_identity/src/models/models.dart';
 
 // TODO: Documentation
 class PingIdentity extends ChangeNotifier {
@@ -60,26 +47,63 @@ class PingIdentity extends ChangeNotifier {
     _channel.setMethodCallHandler(_messageHandler);
   }
 
-  Future<bool> get isPushDisabled {
+  Future<bool> isPushDisabled() {
     return _channel.invokeMethod<bool>('isPushDisabled');
   }
 
-  Future<bool> get isGooglePlayServicesAvailable async {
+  Future<bool> isGooglePlayServicesAvailable() {
     if (!Platform.isAndroid) {
-      return false;
+      return Future.value(false);
     }
     return _channel.invokeMethod<bool>('isGooglePlayServicesAvailable');
   }
 
-  Future<bool> get isDeviceTrusted async {
+  Future<bool> isDeviceTrusted() async {
     return _channel.invokeMethod<bool>('isDeviceTrusted');
   }
 
-  Future<void> sendLogs() async {
+  Future<void> updateExistingPayloadWithUserSelection({
+    String userAnswer,
+    String ignoreInterval,
+  }) {
+    return _channel.invokeMethod('updateExisitingPayloadWithUserSelection', {
+      'userAnswer': userAnswer,
+      'ignoreInterval': ignoreInterval,
+    });
+  }
+
+  Future<void> setServerPayload(String payload) {
+    return _channel.invokeMethod('setServerPayload', payload);
+  }
+
+  Future<void> validateAuthenticationToken(String token) {
+    return _channel.invokeMethod('validateAuthenticationToken', token);
+  }
+
+  Future<void> setRootDetection({
+    @required bool toActivate,
+    @required String deviceVerificationApiKey,
+    @required PingIdentityDataCenter dataCenter,
+  }) {
+    final rootDetection = RootDetection(
+      toActivate: toActivate,
+      deviceVerificationApiKey: deviceVerificationApiKey,
+      dataCenter: dataCenter,
+    );
+    return _channel.invokeMethod('setRootDetection', rootDetection.toJson());
+  }
+
+  Future<RestrictiveOneTimePasscodeResponse> getRestrictiveOneTimePasscode() {
+    return _channel
+        .invokeMapMethod('getRestrictiveOneTimePasscode')
+        .then((res) => RestrictiveOneTimePasscodeResponse.fromJson(res));
+  }
+
+  Future<void> sendLogs() {
     return _channel.invokeMethod<void>('sendLogs');
   }
 
-  Future<String> generatePayload() async {
+  Future<String> generatePayload() {
     return _channel.invokeMethod<String>('generatePayload');
   }
 
@@ -92,37 +116,26 @@ class PingIdentity extends ChangeNotifier {
     );
   }
 
-  Future<void> removeLocalData() async {
+  Future<void> removeLocalData() {
     return _channel.invokeMethod<void>('removeLocalData');
   }
 
-  Future<void> setUserSelection(UserSelection selection) async {
+  Future<void> setUserSelection({
+    @required PingIdentityActionType actionType,
+    @required PingIdentityTrustLevel trustLevel,
+  }) {
+    final selection = UserSelection(
+      actionType: actionType,
+      trustLevel: trustLevel,
+    );
     return _channel.invokeMethod<void>('setUserSelection', selection.toJson());
   }
 
-  Future<void> pairDevice() async {
-    final selection = UserSelection(
-      actionType: PingIdentityActionType.none,
-      trustLevel: PingIdentityTrustLevel.trusted,
-    );
-
-    return setUserSelection(selection);
-  }
-
-  Future<void> unpairDevice() async {
-    final selection = UserSelection(
-      actionType: PingIdentityActionType.deny,
-      trustLevel: PingIdentityTrustLevel.ignore,
-    );
-
-    return setUserSelection(selection);
-  }
-
-  Future<void> init(PingIdentityConfig config) async {
+  Future<void> init(PingIdentityConfig config) {
     return _channel.invokeMapMethod('init', config.toJson());
   }
 
-  Future<void> _messageHandler(MethodCall call) async {
+  void _messageHandler(MethodCall call) {
     switch (call.method) {
       case "onPairingProgress":
         onPairingProgress(call.arguments);
@@ -185,6 +198,13 @@ class PingIdentity extends ChangeNotifier {
         break;
       case "onError":
         onError(ErrorResponse.fromJson(call.arguments));
+        break;
+      case "onPlatformException":
+        throw PlatformException(
+          code: call.arguments['code'],
+          message: call.arguments['message'],
+          details: '$PlatformException on method ${call.arguments['method']}',
+        );
         break;
     }
   }

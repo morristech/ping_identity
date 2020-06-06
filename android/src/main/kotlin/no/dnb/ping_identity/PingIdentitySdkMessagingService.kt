@@ -16,13 +16,10 @@ open class PingIdentitySdkMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         val dataMap = remoteMessage.data
         if (dataMap.containsKey("pingidsdk") && dataMap["pingidsdk"].equals("true")) {
-
             val data = Bundle()
-
             dataMap.forEach { (key, value) ->
                 data.putString(key, value)
             }
-
             PingIdPushHelper.handlePushMessage(applicationContext, remoteMessage.from, data)
         }
     }

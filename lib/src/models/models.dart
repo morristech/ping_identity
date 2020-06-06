@@ -7,10 +7,16 @@ export 'responses/pairing_completed_response.dart';
 export 'responses/pairing_options_required_response.dart';
 export 'responses/pairing_options_required_with_passcode_response.dart';
 export 'responses/ping_identity_android_response.dart';
+export 'responses/restrictive_one_time_passcode_response.dart';
 
+export 'user_selection.dart';
+export 'root_detection.dart';
 export 'device_details.dart';
 export 'ping_identity_action_status.dart';
 export 'ping_identity_config.dart';
 export 'ping_identity_error_domain.dart';
 export 'ping_identity_supported_mfa_type.dart';
 export 'ping_identity_trust_level.dart';
+export 'ping_identity_passcode_status.dart';
+export 'ping_identity_data_center.dart';
+export 'ping_identity_action_type.dart';

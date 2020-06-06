@@ -14,7 +14,16 @@ class PingIdentitySdkEvents(private val channel: MethodChannel) : PingID.PingIdS
 
     private fun invokeMainThreadMethod(method: String, arguments: Any?) {
         handler.post {
-            channel.invokeMethod(method, arguments)
+            try {
+                channel.invokeMethod(method, arguments)
+            } catch (e: Exception) {
+                val map = mapOf(
+                        "code" to e.javaClass.simpleName,
+                        "message" to e.message,
+                        "method" to method
+                )
+                channel.invokeMethod("onPlatformException", map)
+            }
         }
     }
 
@@ -33,7 +42,7 @@ class PingIdentitySdkEvents(private val channel: MethodChannel) : PingID.PingIdS
     }
 
     override fun onAuthenticationCancelled() {
-       invokeMainThreadMethod("onAuthenticationCancelled", null)
+        invokeMainThreadMethod("onAuthenticationCancelled", null)
     }
 
     override fun onOneTimePasscodeChanged(newPasscode: String?) {
@@ -84,7 +93,7 @@ class PingIdentitySdkEvents(private val channel: MethodChannel) : PingID.PingIdS
 
     override fun authenticationTokenStatus(sessionInfo: Bundle?, errorDomain: PingID.PIDErrorDomain?) {
         val map = mapOf("sessionInfo" to sessionInfo.toString(), "errorDomain" to errorDomain?.name)
-     invokeMainThreadMethod("authenticationTokenStatus", map)
+        invokeMainThreadMethod("authenticationTokenStatus", map)
     }
 
     override fun onAuthenticationRequired(data: Bundle?) {
