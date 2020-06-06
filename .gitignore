@@ -54,6 +54,7 @@ Flutter.podspec
 /captures
 .externalNativeBuild
 **/android/app/build
+android/.settings
 
 # iOS/XCode related
 **/ios/**/*.mode1v3
